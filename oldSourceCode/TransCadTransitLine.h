@@ -1,0 +1,68 @@
+//---------------------------------------------------------------------------
+#ifndef TransCadTransitLineH
+#define TransCadTransitLineH
+
+#include <vcl/system.hpp>
+#include <iostream.h>
+#include <math.h>
+#include "DynamArrays.h"
+
+class TransCadTransitLine{
+   public:
+
+      TransCadTransitLine(void);
+
+      void initialize(void);
+      void printHeader(FILE *ptr, char *s);
+      void printRoute(FILE *ptr); 
+      void setRoute(int i);
+      void setRouteName(char *c);
+      void setMode(int i);
+      void setHeadway1(int i);
+      void setHeadway2(int i);
+      void setHeadway3(int i);
+      void setStopPenalty (float f);
+      void setTimeFactor (float f);
+      void setFare (float f);
+      
+      int getRoute(void);
+      int getMode(void);
+      int getHeadway1(void);
+      int getHeadway2(void);
+      int getHeadway3(void);
+      float getStopPenalty(void);
+      float getTimeFactor(void);
+      float getFare(void);
+      int getNumberOfNodes(void);
+      int getNode(int k);
+      bool getIdentical(void);
+      
+      void setIdentical(bool b);
+      
+      void printNodes(FILE *ptr);
+      void printHeadways(FILE *ptr);
+      void addNode(int i);
+
+
+
+      protected:
+         int route;
+         char routeName[20];
+         int mode;
+         int headway1;
+         int headway2;
+         int headway3;
+         float stopPenalty;
+         float timeFactor;
+         float fare;
+         
+         int numberOfNodes;
+         bool identical;
+                     
+         T1DIntArray nodes;
+         
+
+};
+
+//---------------------------------------------------------------------------
+#endif

@@ -1,0 +1,65 @@
+//---------------------------------------------------------------------------
+#ifndef Emme2TransitLineH
+#define Emme2TransitLineH
+
+#include <vcl/system.hpp>
+#include <iostream.h>
+#include <math.h>
+#include "DynamArrays.h"
+
+class Emme2TransitLine{
+   public:
+
+      Emme2TransitLine(void);
+
+      void initialize(void);
+      void printHeader(FILE *ptr, char *s);
+      void printRoute(FILE *ptr);
+      void printHeadways(FILE *ptr);
+      void setMode(char *s);
+      void setHeadway(float f);
+      void setAvgSpeed(float f);
+      void setShortName(char *c);
+      void setLongName(char *c);
+      void setIdentical(bool b);
+      void setTypeOfMode(int m);
+      void setIntMode(int i);
+      char* getMode(void);
+      int getNumberOfNodes(void);
+      int getNode(int k);
+      int getIntMode(void);
+      float getHeadway(void);
+      float getAvgSpeed(void);
+      bool getIdentical(void);
+      char* getShortName(void);
+      char* getLongName(void);
+      void printNodes(FILE *ptr);
+      void printHeadway(FILE *ptr);
+      void printAvgSpeed(FILE *ptr);
+      void addNode(int i);
+
+
+
+      protected:
+         char shortName[20];
+         char mode[3];
+         int typeOfMode;
+         float headway;
+         float avgSpeed;
+         char longName[40];
+         int ttf;
+
+         int intMode;
+         int numberOfNodes;
+         T1DIntArray nodes;
+         int uniqueId;
+         bool identical;
+
+         
+
+         
+
+};
+
+//---------------------------------------------------------------------------
+#endif

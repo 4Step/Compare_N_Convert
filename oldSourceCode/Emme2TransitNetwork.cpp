@@ -1,0 +1,949 @@
+//---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include "Emme2TransitNetwork.h"
+#include "stdutil.h"
+#include "DynamArrays.h"
+
+// constructor w/o an input file
+Emme2TransitNetwork::Emme2TransitNetwork(void)
+{
+   Lines.Length=0;
+   numberOfLines=0;
+}
+
+// constructor with an input file
+Emme2TransitNetwork::Emme2TransitNetwork(char *n)
+{
+   if((this->fptr=fopen(n,"r"))==NULL)
+   {
+      cout<<"\n\nError: Could not open 'InputFile' file ("<<n;
+      cout<<") for reading.\n";
+      cout<<"\n\tProgram will terminate.\n";
+      exit(1);
+   }
+
+   Lines.Length=0;
+   numberOfLines=0;
+   strcpy(name,n);
+}
+
+// utility to add a new line
+void Emme2TransitNetwork::addLine(void)
+{
+   numberOfLines++;
+   Lines.Length++;
+}
+
+// utility to return the number of lines
+int Emme2TransitNetwork::getNumberOfLines(void)
+{
+   return(numberOfLines);
+}
+
+// compare two networks
+void Emme2TransitNetwork::compareItineraries(Emme2TransitNetwork* compare, FILE *ptr)
+{
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"          Comparison of Transit Networks\n");
+   fprintf(ptr,"  ----------------------------------------------\n\n");
+
+   // check the modes present
+   int temp=0;
+   int place=0;
+   bool haveIt;
+   T2DIntArray modes;
+   T2DIntArray numModes;
+
+   modes.Length=2;
+   numModes.Length=2;
+
+   // find the modes present for the baseline network
+   modes[0].Length = 0;
+   numModes[0].Length = 0;
+
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      // store the mode of each line in temp
+      temp=this->Lines[i].getIntMode();
+
+      haveIt=false;
+      for(int j=0;j<modes[0].Length;++j)
+      {
+         if(temp==modes[0][j])
+         {
+            haveIt=true;
+            numModes[0][j]++;
+         }
+      }
+
+      if(!haveIt)
+      {
+         modes[0].Length++;
+         numModes[0].Length++;
+
+         place = modes[0].Length-1;
+
+         modes[0][place] = temp;
+         numModes[0][place] = 1;
+
+      } // end If not haveIt
+
+   } // end count through lines
+
+   // find the modes present in the compare network
+   modes[1].Length = 0;
+   numModes[1].Length = 0;
+
+   for(int i=0;i<compare->getNumberOfLines();++i)
+   {
+      // store the mode of each line in temp
+      temp=compare->Lines[i].getIntMode();
+
+      haveIt=false;
+      for(int j=0;j<modes[1].Length;++j)
+      {
+         if(temp==modes[1][j])
+         {
+            haveIt=true;
+            numModes[1][j]++;
+         }
+      }
+
+      if(!haveIt)
+      {
+         modes[1].Length++;
+         numModes[1].Length++;
+
+         place = modes[1].Length-1;
+
+         modes[1][place] = temp;
+         numModes[1][place] = 1;
+
+      } // end If not haveIt
+
+   } // end count through lines
+
+   // print out the basics
+   // base network
+   fprintf(ptr,"\nBase Network\n");
+   fprintf(ptr,  "------------\n");
+   fprintf(ptr,"Network Name    : %-40s\n",this->name);
+   fprintf(ptr,"Number of Lines : %6d\n",this->getNumberOfLines());
+
+   fprintf(ptr,"Modes Present   :");
+   for(int i=0;i<modes[0].Length;++i)
+   {
+      if (i==0) fprintf(ptr,"%7s",this->modeToInt[i]);
+      else fprintf(ptr,",%5s",this->modeToInt[i]);
+   }
+
+   fprintf(ptr,"\nLines Per Mode  :");
+   for(int i=0;i<numModes[0].Length;++i)
+   {
+      if (i==0) fprintf(ptr,"%7d",numModes[0][i]);
+      else fprintf(ptr,",%7d",numModes[0][i]);
+   }
+   fprintf(ptr,"\n");
+
+   // compare network
+   fprintf(ptr,"\nCompare Network\n");
+   fprintf(ptr,  "------------\n");
+   fprintf(ptr,"Network Name    : %-20s\n",compare->name);
+   fprintf(ptr,"Number of Lines : %6d\n",compare->getNumberOfLines());
+
+   fprintf(ptr,"Modes Present   :");
+   for(int i=0;i<modes[1].Length;++i)
+   {
+      if(i==0) fprintf(ptr,"%7s",compare->modeToInt[i]);
+      else fprintf(ptr,",%7s",compare->modeToInt[i]);
+   }
+
+   fprintf(ptr,"\nLines Per Mode  :");
+   for(int i=0;i<numModes[1].Length;++i)
+   {
+      if (i==0) fprintf(ptr,"%7d",numModes[1][i]);
+      else fprintf(ptr,",%7d",numModes[1][i]);
+   }
+   fprintf(ptr,"\n");
+
+   // compare transit lines
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"           Comparison of Transit Lines\n");
+   fprintf(ptr,"  ----------------------------------------------\n\n");
+
+   fprintf(ptr,"\n Transit Lines included in Base network but not in Compare network\n");
+   fprintf(ptr,  " -----------------------------------------------------------------\n\n");
+
+   bool clear;
+   bool allClear;
+
+   allClear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      clear = false;
+      for(int j=0;j<compare->getNumberOfLines();++j)
+      {
+         if(strcmp(this->Lines[i].getShortName(),compare->Lines[j].getShortName())==0)
+         {
+            clear = true;
+            break;
+         }
+      }
+
+      if (!clear)
+      {
+         allClear = false;
+
+         fprintf(ptr," Line Name / Mode  : %-20s / %-3s\n",this->Lines[i].getShortName(),
+                                                          this->Lines[i].getMode() );
+
+      }
+   }
+
+   if(allClear) fprintf(ptr," No Transit Lines in Base Network not in Compare Network\n");
+
+
+   // check vice versa
+   fprintf(ptr,"\n\n Transit Lines included in Compare network but not in Base network\n");
+   fprintf(ptr,  " -----------------------------------------------------------------\n\n");
+
+   allClear = true;
+   for(int i=0;i<compare->getNumberOfLines();++i)
+   {
+      clear = false;
+      for(int j=0;j<this->getNumberOfLines();++j)
+      {
+         if(strcmp(compare->Lines[i].getShortName(),this->Lines[j].getShortName())==0)
+         {
+            clear = true;
+            break;
+         }
+      }
+
+      if (!clear)
+      {
+         allClear = false;
+
+         fprintf(ptr," Line Name / Mode : %-20s / %-3s\n",compare->Lines[i].getShortName(),
+                                                         compare->Lines[i].getMode() );
+
+      }
+   }
+
+   if(allClear) fprintf(ptr," No Transit Lines in Compare Network not in Base Network\n");
+
+
+   // compare itineraries
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"   Comparison of Transit Itineraries (for lines in both networks)\n");
+   fprintf(ptr,"-------------------------------------------------------------------\n\n");
+
+   int jPlace;
+   bool match;
+   Emme2TransitNode baseNode;
+   Emme2TransitNode compareNode;
+
+   allClear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      match = false;
+      for(int j=0;j<compare->getNumberOfLines();++j)
+      {
+         if(strcmp(this->Lines[i].getShortName(),compare->Lines[j].getShortName())==0)
+         {
+            jPlace = j;
+            match = true;
+            break;
+         }
+      } // end j
+
+      if (match)
+      {
+         clear = true;
+         for(int k=0;k<this->Lines[i].getNumberOfNodes();++k)
+         {
+            baseNode = this->Lines[i].getNode(k);
+            compareNode = compare->Lines[jPlace].getNode(k);
+
+            if(!baseNode.isDudeLikeMe(compareNode))
+            {
+               clear = false;
+               break;
+            }
+            
+         } // end k
+
+         if (clear) this->Lines[i].setIdentical(true);
+
+      } // end if match
+
+      if(!clear)
+      {
+         allClear = false;
+         fprintf(ptr,"\n");
+         fprintf(ptr," Itinerary Mismatch for Line Name = %-20s, Mode = %-3s\n",
+                       this->Lines[i].getShortName(),this->Lines[i].getMode());
+         fprintf(ptr,"      Base Network Itinerary    = ");
+         this->Lines[i].printNodes(ptr);
+         fprintf(ptr,"\n");
+         fprintf(ptr,"      Compare Network Itinerary = ");
+         compare->Lines[jPlace].printNodes(ptr);
+         fprintf(ptr,"\n");
+      }
+
+   } // end i
+
+   if(allClear) fprintf(ptr," No Transit Itinerary Differences\n");
+
+   // compare headways
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"   Comparison of Transit Headways (for lines in both networks)\n");
+   fprintf(ptr,"-------------------------------------------------------------------\n\n");
+
+   float tempDiff1, tempDiff2;
+
+   allClear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      match = false;
+      for(int j=0;j<compare->getNumberOfLines();++j)
+      {
+         if(strcmp(this->Lines[i].getShortName(),compare->Lines[j].getShortName())==0)
+         {
+            jPlace = j;
+            match = true;
+            break;
+         }
+      } // end j
+
+      if (match)
+      {
+         tempDiff1 = 0.0;
+         tempDiff1 = this->Lines[i].getHeadway() - compare->Lines[jPlace].getHeadway();
+         if(tempDiff1<0.0) tempDiff1 = - tempDiff1;
+         
+         if(tempDiff1>0.01) clear = false;
+         else clear = true;
+      }
+
+      if(!clear)
+      {
+         allClear = false;
+         fprintf(ptr,"\n");
+         fprintf(ptr," Headway Mismatch for Line Name = %-20s, Mode = %-3s\n",
+                       this->Lines[i].getShortName(),this->Lines[i].getMode());
+         fprintf(ptr,"      Base Network Headways    = ");
+         this->Lines[i].printHeadway(ptr);
+         fprintf(ptr,"\n");
+         fprintf(ptr,"      Compare Network Headways = ");
+         compare->Lines[jPlace].printHeadway(ptr);
+         fprintf(ptr,"\n");
+      }
+
+   } // end i
+
+   if(allClear) fprintf(ptr," No Transit Headway Differences\n");
+
+   // compare Default Speed
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"   Comparison of Transit Default Speed (for lines in both networks)\n");
+   fprintf(ptr,"-------------------------------------------------------------------\n\n");
+
+   allClear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      match = false;
+      for(int j=0;j<compare->getNumberOfLines();++j)
+      {
+         if(strcmp(this->Lines[i].getShortName(),compare->Lines[j].getShortName())==0)
+         {
+            jPlace = j;
+            match = true;
+            break;
+         }
+      } // end j
+
+      if (match)
+      {
+         tempDiff1 = 0.0;
+         tempDiff1 = this->Lines[i].getAvgSpeed() - compare->Lines[jPlace].getAvgSpeed();
+         if(tempDiff1<0.0) tempDiff1 = - tempDiff1;
+         
+         if(tempDiff1>0.01) clear = false;
+         else clear = true;
+      }
+
+      if(!clear)
+      {
+         allClear = false;
+         fprintf(ptr,"\n");
+         fprintf(ptr," Default Speed Mismatch for Line Name = %-20s, Mode = %-3s\n",
+                       this->Lines[i].getShortName(),this->Lines[i].getMode());
+         fprintf(ptr,"      Base Network Default Speed    = ");
+         this->Lines[i].printAvgSpeed(ptr);
+         fprintf(ptr,"\n");
+         fprintf(ptr,"      Compare Network Default Speed = ");
+         compare->Lines[jPlace].printAvgSpeed(ptr);
+         fprintf(ptr,"\n");
+      }
+
+   } // end i
+
+   if(allClear) fprintf(ptr," No Transit Default Speed Differences\n");
+
+   // compare User Attribute #1
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"   Comparison of Transit User Attribute #1 (for lines in both networks)\n");
+   fprintf(ptr,"-------------------------------------------------------------------\n\n");
+
+   allClear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      match = false;
+      for(int j=0;j<compare->getNumberOfLines();++j)
+      {
+         if(strcmp(this->Lines[i].getShortName(),compare->Lines[j].getShortName())==0)
+         {
+            jPlace = j;
+            match = true;
+            break;
+         }
+      } // end j
+
+      if (match)
+      {
+         tempDiff1 = 0.0;
+         tempDiff1 = this->Lines[i].getUserAttribute01() - compare->Lines[jPlace].getUserAttribute01();
+         if(tempDiff1<0.0) tempDiff1 = - tempDiff1;
+         
+         if(tempDiff1>0.01) clear = false;
+         else clear = true;
+      }
+
+      if(!clear)
+      {
+         allClear = false;
+         fprintf(ptr,"\n");
+         fprintf(ptr," User Attribute #1 Mismatch for Line Name = %-20s, Mode = %-3s\n",
+                       this->Lines[i].getShortName(),this->Lines[i].getMode());
+         fprintf(ptr,"      Base Network User Attribute #1    = ");
+         this->Lines[i].printUserAttribute01(ptr);
+         fprintf(ptr,"\n");
+         fprintf(ptr,"      Compare Network User Attribute #1 = ");
+         compare->Lines[jPlace].printUserAttribute01(ptr);
+         fprintf(ptr,"\n");
+      }
+
+   } // end i
+
+   if(allClear) fprintf(ptr," No Transit User Attribute #1 Differences\n");
+
+   // compare User Attribute #2
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"   Comparison of Transit User Attribute #2 (for lines in both networks)\n");
+   fprintf(ptr,"-------------------------------------------------------------------\n\n");
+
+   allClear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      match = false;
+      for(int j=0;j<compare->getNumberOfLines();++j)
+      {
+         if(strcmp(this->Lines[i].getShortName(),compare->Lines[j].getShortName())==0)
+         {
+            jPlace = j;
+            match = true;
+            break;
+         }
+      } // end j
+
+      if (match)
+      {
+         tempDiff1 = 0.0;
+         tempDiff1 = this->Lines[i].getUserAttribute02() - compare->Lines[jPlace].getUserAttribute02();
+         if(tempDiff1<0.0) tempDiff1 = - tempDiff1;
+         
+         if(tempDiff1>0.01) clear = false;
+         else clear = true;
+      }
+
+      if(!clear)
+      {
+         allClear = false;
+         fprintf(ptr,"\n");
+         fprintf(ptr," User Attribute #2 Mismatch for Line Name = %-20s, Mode = %-3s\n",
+                       this->Lines[i].getShortName(),this->Lines[i].getMode());
+         fprintf(ptr,"      Base Network User Attribute #2    = ");
+         this->Lines[i].printUserAttribute02(ptr);
+         fprintf(ptr,"\n");
+         fprintf(ptr,"      Compare Network User Attribute #2 = ");
+         compare->Lines[jPlace].printUserAttribute02(ptr);
+         fprintf(ptr,"\n");
+      }
+
+   } // end i
+
+   if(allClear) fprintf(ptr," No Transit User Attribute #2 Differences\n");
+
+   // compare User Attribute #3
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"   Comparison of Transit User Attribute #3 (for lines in both networks)\n");
+   fprintf(ptr,"-------------------------------------------------------------------\n\n");
+
+   allClear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      match = false;
+      for(int j=0;j<compare->getNumberOfLines();++j)
+      {
+         if(strcmp(this->Lines[i].getShortName(),compare->Lines[j].getShortName())==0)
+         {
+            jPlace = j;
+            match = true;
+            break;
+         }
+      } // end j
+
+      if (match)
+      {
+         tempDiff1 = 0.0;
+         tempDiff1 = this->Lines[i].getUserAttribute03() - compare->Lines[jPlace].getUserAttribute03();
+         if(tempDiff1<0.0) tempDiff1 = - tempDiff1;
+         
+         if(tempDiff1>0.01) clear = false;
+         else clear = true;
+      }
+
+      if(!clear)
+      {
+         allClear = false;
+         fprintf(ptr,"\n");
+         fprintf(ptr," User Attribute #3 Mismatch for Line Name = %-20s, Mode = %-3s\n",
+                       this->Lines[i].getShortName(),this->Lines[i].getMode());
+         fprintf(ptr,"      Base Network User Attribute #3    = ");
+         this->Lines[i].printUserAttribute03(ptr);
+         fprintf(ptr,"\n");
+         fprintf(ptr,"      Compare Network User Attribute #3 = ");
+         compare->Lines[jPlace].printUserAttribute03(ptr);
+         fprintf(ptr,"\n");
+      }
+
+   } // end i
+
+   if(allClear) fprintf(ptr," No Transit User Attribute #3 Differences\n");
+
+   // print out the lines which are identical
+
+   fprintf(ptr,"\n\n\n");
+   fprintf(ptr,"   Transit Lines in both networks with Identical Itineraries\n");
+   fprintf(ptr,"-------------------------------------------------------------------\n\n");
+
+   clear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      if(this->Lines[i].getIdentical())
+      {
+
+         clear = false;
+         fprintf(ptr," Line Name / Mode : %-20s / %-3s\n",this->Lines[i].getShortName(),
+                                                         this->Lines[i].getMode() );
+      }
+
+   } // end i
+
+   if(clear) fprintf(ptr," No Identical Transit Itineraries \n\n");
+
+
+
+}
+
+// read in Emme2 cards from fptr with debug output written to optr
+void Emme2TransitNetwork::readLines(bool debug, FILE *optr)
+{
+   char buffer[120];
+   char name[40];
+   char temp[15];
+
+   int c1,c2,slen;
+   int place=0;
+   int currentNode;
+
+   bool first;
+
+   // first move through the header records
+   char firstLetter[2];
+   char cTest[2]="c", tTest[2]="t", aTest[2]="a", dTest[2]="d", blankTest[2]=" ";
+   char pTest[2]="p", lTest[2]="l", uTest[2]="u", crTest[3]="\n";
+   char rest[100];
+   int tempInt, disco, lastNode;
+   float tempFloat;
+   bool foundMode;
+   bool foundNodes=false;
+   DynamicArray <bool> skipWords;
+
+   // grab my buffer over and over
+   first = true;
+   currentNode = -99999;
+   while(fgets(buffer,120,this->fptr) != NULL)
+   {
+      c1 = 0;
+      slen = strlen(buffer);
+      skipWords.Length=slen;
+      for(int i=0;i<slen;++i) skipWords[i]=false;
+
+      // check the first character for a comment card
+      strncpy(firstLetter,&buffer[0],1);
+      firstLetter[1] = '\0';
+
+      // check if it is comment card or t-card or a d-card
+      if( (strcmp(firstLetter,cTest)==0) || (strcmp(firstLetter,tTest)==0) ||
+          (strcmp(firstLetter,dTest)==0) ) continue;
+
+      else if (strcmp(firstLetter,aTest)==0)
+      {
+         // move back one spot in the file (to find the ' later on)
+         fseek(this->fptr,-1L,SEEK_CUR);
+
+         // print last route
+         if(!first && debug) Lines[place].printRoute(optr);
+
+         // add a line
+         addLine();
+         place = Lines.Length - 1;
+
+         // declare the line to be added to the array
+         Emme2TransitLine tempLine;
+
+         Lines[place] = tempLine;
+
+         Lines[place].initialize();
+
+         if(first && debug)
+         {
+            Lines[place].printHeader(optr,this->name);
+            first = false;
+         }
+
+         // shortName
+         c1=0;
+         c2=0;
+         while( (buffer[c2]!='\'') && (c2<slen) ) c2++;
+         c2++;
+         c1=c2;
+         while( (buffer[c2]!='\'') && (c2<slen) ) c2++;
+
+         strncpy(name,&buffer[c1],(c2-c1));
+         name[c2-c1] = '\0';
+
+         Lines[place].setShortName(name);
+
+         // mode
+         // find stuff between the blank spaces
+         c1=c2++;
+         while( (buffer[c2]==' ') && (c2<slen) ) c2++;
+         c1=c2;
+         while( (buffer[c2]!=' ') && (c2<slen) ) c2++;
+         strncpy(name,&buffer[c1],(c2-c1));
+         name[c2-c1] = '\0';
+
+         Lines[place].setMode(name);
+
+         // set the integer mode
+         foundMode = false;
+         for(int i=0;i<modeToInt.Length;++i)
+         {
+            if (strcmp(modeToInt[i].c_str(),name)==0)
+            {
+               tempInt = i;
+               foundMode = true;
+               break;
+            }
+         }
+         if(!foundMode)
+         {
+            modeToInt.Length++;
+            modeToInt[modeToInt.Length-1].sprintf(name);
+            tempInt = modeToInt.Length-1;
+         }
+
+         Lines[place].setIntMode(tempInt);
+
+         // typeOfMode
+         c1=c2;
+         while( (buffer[c2]==' ') && (c2<slen) ) c2++;
+         c1=c2;
+         while( (buffer[c2]!=' ') && (c2<slen) ) c2++;
+         strncpy(name,&buffer[c1],(c2-c1));
+         tempInt = atoi(name);
+         Lines[place].setTypeOfMode(tempInt);
+
+         // headway
+         c1=c2;
+         while( (buffer[c2]==' ') && (c2<slen) ) c2++;
+         c1=c2;
+         while( (buffer[c2]!=' ') && (c2<slen) ) c2++;
+         strncpy(name,&buffer[c1],(c2-c1));
+         tempFloat = atof(name);
+         Lines[place].setHeadway(tempFloat);
+
+         // average speed
+         c1=c2;
+         while( (buffer[c2]==' ') && (c2<slen) ) c2++;
+         c1=c2;
+         while( (buffer[c2]!=' ') && (c2<slen) ) c2++;
+         strncpy(name,&buffer[c1],(c2-c1));
+         tempFloat = atof(name);
+         Lines[place].setAvgSpeed(tempFloat);
+
+         // long name
+         c2-=1;
+         while( (buffer[c2]!='\'') && (c2<slen) ) c2++;
+         c2++;
+         c1=c2;
+         while( (buffer[c2]!='\'') && (c2<slen) ) c2++;
+
+         strncpy(name,&buffer[c1],(c2-c1));
+         name[c2-c1] = '\0';
+
+         Lines[place].setLongName(name);
+
+         // user defined attribute one
+         c2++;
+         c1=c2;
+         while( (buffer[c2]==' ') && (c2<slen) ) c2++;
+         c1=c2;
+         while( (buffer[c2]!=' ') && (c2<slen) ) c2++;
+         strncpy(name,&buffer[c1],(c2-c1));
+         tempFloat = atof(name);
+         Lines[place].setUserAttribute01(tempFloat);
+
+         // user defined attribute two
+         c1=c2;
+         while( (buffer[c2]==' ') && (c2<slen) ) c2++;
+         c1=c2;
+         while( (buffer[c2]!=' ') && (c2<slen) ) c2++;
+         strncpy(name,&buffer[c1],(c2-c1));
+         tempFloat = atof(name);
+         Lines[place].setUserAttribute02(tempFloat);
+
+         // user defined attribute three
+         c1=c2;
+         while( (buffer[c2]==' ') && (c2<slen) ) c2++;
+         c1=c2;
+         while( (buffer[c2]!=' ') && (c2<slen) ) c2++;
+         strncpy(name,&buffer[c1],(c2-c1));
+         tempFloat = atof(name);
+         Lines[place].setUserAttribute03(tempFloat);
+
+         // that's all we want out of the a record line
+
+         // set foundNodes to false
+         foundNodes = false;
+
+      } // end 'a'
+
+      else if (slen>1) // no a or t or c or d
+      {
+         int counter = 0;
+
+         // march through the buffer and pick out nodes and special characters
+         while(counter<slen)
+         {
+            // grab the first character
+            c1 = counter;
+            strncpy(firstLetter,&buffer[c1],1);
+
+            if(strcmp(firstLetter,crTest)==0) break;
+
+            // path no
+            if(strcmp(firstLetter,pTest)==0)
+            {
+               // set foundNodes to true
+               foundNodes = true;
+
+               // either "path=no" or "path=yes"
+               // 1st, skip 7 spaces for "path=no"
+               c2 = c1 + 7;
+
+               // check that c2 is now blank, if not, skip another space
+               strncpy(firstLetter,&buffer[c2],1);
+               if(strcmp(firstLetter,blankTest)!=0) c2++;
+
+               counter = c2;
+               if(counter>slen) continue;
+            }
+
+            // dwell time
+            else if(strcmp(firstLetter,dTest)==0)
+            {
+               c2 = c1 + 4; // "dwt="
+               strncpy(name,&buffer[c1],(c2-c1));
+               name[c2-c1] = '\0';
+               if(strcmp(name,"dwt=")==0)
+               {
+                  // find the next blank space
+                  c1 = c2;
+                  strncpy(firstLetter,&buffer[c2],1);
+                  while(strcmp(firstLetter,blankTest)!=0 && strcmp(firstLetter,crTest)!=0)
+                  {
+                     c2++;
+                     strncpy(firstLetter,&buffer[c2],1);
+                  }
+
+                  strncpy(name,&buffer[c1],(c2-c1));
+                  name[c2-c1] = '\0';
+
+                  String *dwellTime = new String(name);
+                  Lines[place].setNodeDwellTime(currentNode,*dwellTime);
+
+                  // update index to current position
+                  counter = c2;
+                  if(counter>slen) continue;
+
+               } // if "dwt="
+
+            } // if d test
+
+            // travel time factor
+            else if(strcmp(firstLetter,tTest)==0)
+            {
+               c2 = c1 + 4; // "ttf="
+               strncpy(name,&buffer[c1],(c2-c1));
+               name[c2-c1] = '\0';
+               if(strcmp(name,"ttf=")==0)
+               {
+                  // find the next blank space
+                  c1 = c2;
+                  strncpy(firstLetter,&buffer[c2],1);
+                  while(strcmp(firstLetter,blankTest)!=0 && strcmp(firstLetter,crTest)!=0)
+                  {
+                     c2++;
+                     strncpy(firstLetter,&buffer[c2],1);
+                  }
+
+                  strncpy(name,&buffer[c1],(c2-c1));
+                  name[c2-c1] = '\0';
+
+                  String *travelTimeFactor = new String(name);
+                  Lines[place].setNodeTravelTimeFactor(currentNode,*travelTimeFactor);
+
+                  // update index to current position
+                  counter = c2;
+                  if(counter>slen) continue;
+
+               } // if "ttf="
+
+            } // if t test
+
+            // layover
+            else if(strcmp(firstLetter,lTest)==0)
+            {
+               c2 = c1 + 4; // "lay="
+               strncpy(name,&buffer[c1],(c2-c1));
+               name[c2-c1] = '\0';
+               if(strcmp(name,"lay=")==0)
+               {
+                  // find the next blank space
+                  c1 = c2;
+                  strncpy(firstLetter,&buffer[c2],1);
+                  while(strcmp(firstLetter,blankTest)!=0 && strcmp(firstLetter,crTest)!=0)
+                  {
+                     c2++;
+                     strncpy(firstLetter,&buffer[c2],1);
+                  }
+
+                  strncpy(name,&buffer[c1],(c2-c1));
+                  name[c2-c1] = '\0';
+
+                  String *layover = new String(name);
+                  Lines[place].setNodeLayover(currentNode,*layover);
+
+                  // update index to current position
+                  counter = c2;
+                  if(counter>slen) continue;
+
+               } // if "lay="
+
+            } // if l test
+
+            // congestion factor
+            else if(strcmp(firstLetter,uTest)==0)
+            {
+               c2 = c1 + 4; // "us1="
+               strncpy(name,&buffer[c1],(c2-c1));
+               name[c2-c1] = '\0';
+               if(strcmp(name,"us1=")==0)
+               {
+                  // find the next blank space
+                  c1 = c2;
+                  strncpy(firstLetter,&buffer[c2],1);
+                  while(strcmp(firstLetter,blankTest)!=0 && strcmp(firstLetter,crTest)!=0)
+                  {
+                     c2++;
+                     strncpy(firstLetter,&buffer[c2],1);
+                  }
+
+                  strncpy(name,&buffer[c1],(c2-c1));
+                  name[c2-c1] = '\0';
+
+                  String *us1 = new String(name);
+                  Lines[place].setNodeCongestionFactor(currentNode,*us1);
+
+                  // update index to current position
+                  counter = c2;
+                  if(counter>slen) continue;
+
+               } // if "us1="
+
+            } // if u test
+
+            // non-blank --> assumed to be an integer
+            else if(strcmp(firstLetter,blankTest)!=0)
+            {
+               c2 = c1;
+               while(strcmp(firstLetter,blankTest)!=0)
+               {
+                  c2++;
+                  strncpy(firstLetter,&buffer[c2],1);
+               }
+
+               strncpy(name,&buffer[c1],(c2-1));
+               name[c2-c1] = '\0';
+
+               // only add the node if we've hit "path="
+               if(foundNodes)
+               {
+                  tempInt = atoi(name);
+                  currentNode = tempInt;
+                  Lines[place].addNode(tempInt);
+               }
+
+               counter = c2;
+               if(counter>slen) continue;
+
+            } // if non-blank
+
+            else counter++;
+
+         } // end for i loop
+
+      } // end else
+
+   } // end buffer grab
+
+   // print lingering line
+   if(debug) Lines[place].printRoute(optr);
+
+   // print some feedback
+   cout<<"\n\n   "<<Lines.Length<<" Transit Lines read from Transit Network: ";
+   cout<<this->name<<"\n";
+
+}
+
+
+
+
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+

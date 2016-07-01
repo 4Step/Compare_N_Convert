@@ -1,0 +1,788 @@
+//---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include "TransCadTransitNetwork.h"
+#include "stdutil.h"
+#include "DynamArrays.h"
+
+
+// constructor w/ no input files
+TransCadTransitNetwork::TransCadTransitNetwork(void)
+{
+   Lines.Length=0;
+   numberOfLines=0;
+
+}
+
+// constructor with input files
+// reads in the data and stores them as line objects
+TransCadTransitNetwork::TransCadTransitNetwork(char *infoFile, char *nodeFile,
+                                               FILE *optr, bool debug)
+{
+   // initialize the line variables
+   Lines.Length=0;
+   numberOfLines=0;
+   strcpy(name,infoFile);
+   
+   // open the input files
+   if((infoFptr = fopen(infoFile,"rb")) == NULL)
+   {
+      cout<<"TransCadTransitNetwork Error: The DBF information file ("<<infoFile<<") could not be opened.\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   
+   if((nodeFptr = fopen(nodeFile,"rb")) == NULL)
+   {
+      cout<<"TransCadTransitNetwork Error: The DBF node file ("<<nodeFile<<") could not be opened.\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   
+   // get the database header information
+   infoDbHeader = get_dbase_header_info(infoFptr);
+   nodeDbHeader = get_dbase_header_info(nodeFptr);
+   
+   // create data arrays for the info data
+   int *dataRouteId, *dataMode, *dataHdwy1, *dataHdwy2, *dataHdwy3;
+   char **dataRouteName;
+
+   // eliminate these for now (i seem to be having memory problems)
+//   double *dataStopPen, *dataTimeFac, *dataFare;
+
+   // create data arrays for the node data
+   int *dataRoute, *dataNode, *dataFlag, *dataStop;
+   
+   // allocate the size based on the number of records
+   // info file
+   dataRouteId = (int *) calloc (infoDbHeader->NumRecords, sizeof(int *));
+   dataMode    = (int *) calloc (infoDbHeader->NumRecords, sizeof(int *));
+   dataHdwy1   = (int *) calloc (infoDbHeader->NumRecords, sizeof(int *));
+   dataHdwy2   = (int *) calloc (infoDbHeader->NumRecords, sizeof(int *));
+   dataHdwy3   = (int *) calloc (infoDbHeader->NumRecords, sizeof(int *));
+   
+   dataRouteName = (char **) calloc(infoDbHeader->NumRecords, sizeof(char[20]));
+   for(int i=0;i<infoDbHeader->NumRecords;++i) dataRouteName[i] = (char *) calloc(20, sizeof(char));
+   
+//   dataStopPen = (double *) calloc (infoDbHeader->NumRecords, sizeof(float *));
+//   dataTimeFac = (double *) calloc (infoDbHeader->NumRecords, sizeof(float *));
+//   dataFare    = (double *) calloc (infoDbHeader->NumRecords, sizeof(float *));
+
+   // node file
+   dataRoute = (int *) calloc (nodeDbHeader->NumRecords, sizeof(int *));
+   dataNode  = (int *) calloc (nodeDbHeader->NumRecords, sizeof(int *));
+   dataFlag  = (int *) calloc (nodeDbHeader->NumRecords, sizeof(int *));
+   dataStop  = (int *) calloc (nodeDbHeader->NumRecords, sizeof(int *));
+   
+   // get the data, using these variables
+   int field, skip;
+   
+   // Info file datat
+   // ROUTE_ID
+   if ((field = get_dbase_field_number (infoDbHeader, "ROUTE_ID")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'ROUTE_ID' is not a field in "<<infoFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(infoDbHeader,field);
+   get_dbase_int_data(dataRouteId,infoDbHeader,field,skip);
+   
+   // ROUTE_NAME
+   if ((field = get_dbase_field_number (infoDbHeader, "ROUTE_NAME")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'ROUTE_NAME' is not a field in "<<infoFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(infoDbHeader,field);
+   get_dbase_char_data(dataRouteName,infoDbHeader,field,skip);
+   
+   // MODE
+   if ((field = get_dbase_field_number (infoDbHeader, "MODE")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'MODE' is not a field in "<<infoFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(infoDbHeader,field);
+   get_dbase_int_data(dataMode,infoDbHeader,field,skip);
+   
+   // HDWY1
+   if ((field = get_dbase_field_number (infoDbHeader, "HDWY1")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'HDWY1' is not a field in "<<infoFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(infoDbHeader,field);
+   get_dbase_int_data(dataHdwy1,infoDbHeader,field,skip);
+   
+   // HDWY2
+   if ((field = get_dbase_field_number (infoDbHeader, "HDWY2")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'HDWY2' is not a field in "<<infoFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(infoDbHeader,field);
+   get_dbase_int_data(dataHdwy2,infoDbHeader,field,skip);
+   
+   // HDWY3
+   if ((field = get_dbase_field_number (infoDbHeader, "HDWY3")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'HDWY3' is not a field in "<<infoFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(infoDbHeader,field);
+   get_dbase_int_data(dataHdwy3,infoDbHeader,field,skip);
+   
+   /*
+   // STOP_PEN
+   if ((field = get_dbase_field_number (infoDbHeader, "STOP_PEN")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'STOP_PEN' is not a field in "<<infoFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(infoDbHeader,field);
+   get_dbase_double_data(dataStopPen,infoDbHeader,field,skip);
+   
+   // TIME_FAC
+   if ((field = get_dbase_field_number (infoDbHeader, "TIME_FAC")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'STOP_PEN' is not a field in "<<infoFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(infoDbHeader,field);
+   get_dbase_double_data(dataTimeFac,infoDbHeader,field,skip);
+   
+   // FARE
+   if ((field = get_dbase_field_number (infoDbHeader, "FARE")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'FARE' is not a field in "<<infoFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(infoDbHeader,field);
+   get_dbase_double_data(dataFare,infoDbHeader,field,skip);
+   */
+   
+   // Node file data
+   // ROUTE
+   if ((field = get_dbase_field_number (nodeDbHeader, "ROUTE")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'ROUTE' is not a field in "<<nodeFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(nodeDbHeader,field);
+   get_dbase_int_data(dataRoute,nodeDbHeader,field,skip);
+   
+   // NODE
+   if ((field = get_dbase_field_number (nodeDbHeader, "NODE")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'NODE' is not a field in "<<nodeFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(nodeDbHeader,field);
+   get_dbase_int_data(dataNode,nodeDbHeader,field,skip);
+   
+   // FLAG
+   if ((field = get_dbase_field_number (nodeDbHeader, "FLAG")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'FLAG' is not a field in "<<nodeFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(nodeDbHeader,field);
+   get_dbase_int_data(dataFlag,nodeDbHeader,field,skip);
+   
+   // STOP
+   if ((field = get_dbase_field_number (nodeDbHeader, "STOP")) == -1)
+   {
+      cout<<"TransCadTransitNetwork Error: 'STOP' is not a field in "<<nodeFile<<"\n";
+      cout<<"\tProgram will terminate.\n";
+      exit(1);
+   }
+   skip = get_skips(nodeDbHeader,field);
+   get_dbase_int_data(dataStop,nodeDbHeader,field,skip);
+   
+   
+   // First loop through the info file arrays and store them as TransitLines
+   int place;
+   for(int i=0;i<infoDbHeader->NumRecords;++i)
+   {
+      // create a place for the new transit line
+      this->addLine();
+      place = this->Lines.Length - 1;
+      
+      // declare a new line
+      TransCadTransitLine tempLine;
+      
+      // put the line into the Lines array
+      Lines[place] = tempLine;
+      Lines[place].initialize();
+      
+      // print the header if we are in debug mode
+      if(i==0 && debug)
+      {
+         Lines[place].printHeader(optr,this->name);
+      }
+
+      // set the line characteristics for the first line of data
+      Lines[place].setRoute(dataRouteId[i]);
+      Lines[place].setRouteName(dataRouteName[i]);
+      Lines[place].setMode(dataMode[i]);
+      Lines[place].setHeadway1(dataHdwy1[i]);
+      Lines[place].setHeadway2(dataHdwy2[i]);
+      Lines[place].setHeadway3(dataHdwy3[i]);
+//      Lines[place].setStopPenalty(dataStopPen[i]);
+//      Lines[place].setTimeFactor(dataTimeFac[i]);
+//      Lines[place].setFare(dataFare[i]);
+      
+      // now set the nodes using the node file
+      for(int j=0;j<nodeDbHeader->NumRecords;++j)
+      {
+         // check for a match
+         if(Lines[place].getRoute()==dataRoute[j])
+         {
+            // add node as positive if not a stop, and negative if a stop
+            if(dataFlag[j]==1) Lines[place].addNode(-dataNode[j]);
+            else Lines[place].addNode(dataNode[j]);
+         	
+         } // end match check
+         
+      } // end for j
+
+      // print out the line data if in debug mode
+      if(debug)
+      {
+         Lines[place].printRoute(optr);
+      }
+
+   	
+   } // end for i
+
+   // free the pointers
+   free(dataRouteId);
+   free(dataMode);
+   free(dataHdwy1);
+   free(dataHdwy2);
+   free(dataHdwy3);
+   free(*dataRouteName);
+//   free(dataStopPen);
+//   free(dataTimeFac);
+//   free(dataFare);
+   free(dataRoute);
+   free(dataNode);
+   free(dataFlag);
+   free(dataStop);
+
+   fclose(infoFptr);
+   fclose(nodeFptr);
+   
+}
+
+// utility to add a new line
+void TransCadTransitNetwork::addLine(void)
+{
+   numberOfLines++;
+   Lines.Length++;
+}
+
+// utility to return the number of lines
+int TransCadTransitNetwork::getNumberOfLines(void)
+{
+   return(numberOfLines);
+}
+
+// compare two networks
+void TransCadTransitNetwork::compareItineraries(TransCadTransitNetwork* compare, FILE *ptr)
+{
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"          Comparison of Transit Networks\n");
+   fprintf(ptr,"  ----------------------------------------------\n\n");
+
+   // check the modes present
+   int temp=0;
+   int place=0;
+   bool haveIt;
+   T2DIntArray modes;
+   T2DIntArray numModes;
+
+   modes.Length=2;
+   numModes.Length=2;
+
+   // find the modes present for the baseline network
+   modes[0].Length = 0;
+   numModes[0].Length = 0;
+
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      // store the mode of each line in temp
+      temp=this->Lines[i].getMode();
+
+      haveIt=false;
+      for(int j=0;j<modes[0].Length;++j)
+      {
+         if(temp==modes[0][j])
+         {
+            haveIt=true;
+            numModes[0][j]++;
+         }
+      }
+
+      if(!haveIt)
+      {
+         modes[0].Length++;
+         numModes[0].Length++;
+
+         place = modes[0].Length-1;
+
+         modes[0][place] = temp;
+         numModes[0][place] = 1;
+
+      } // end If not haveIt
+
+   } // end count through lines
+
+
+
+   // find the modes present in the compare network
+   modes[1].Length = 0;
+   numModes[1].Length = 0;
+
+   for(int i=0;i<compare->getNumberOfLines();++i)
+   {
+      // store the mode of each line in temp
+      temp=compare->Lines[i].getMode();
+
+      haveIt=false;
+      for(int j=0;j<modes[1].Length;++j)
+      {
+         if(temp==modes[1][j])
+         {
+            haveIt=true;
+            numModes[1][j]++;
+         }
+      }
+
+      if(!haveIt)
+      {
+         modes[1].Length++;
+         numModes[1].Length++;
+
+         place = modes[1].Length-1;
+
+         modes[1][place] = temp;
+         numModes[1][place] = 1;
+
+      } // end If not haveIt
+
+   } // end count through lines
+
+   // print out the basics
+   // base network
+   fprintf(ptr,"\nBase Network\n");
+   fprintf(ptr,  "------------\n");
+   fprintf(ptr,"Network Name   : %-40s\n",this->name);
+   fprintf(ptr,"Number of Lines: %6d\n",this->getNumberOfLines());
+
+   fprintf(ptr,"Modes Present  :");
+   for(int i=0;i<modes[0].Length;++i)
+   {
+      fprintf(ptr,"%5d,",modes[0][i]);
+   }
+
+   fprintf(ptr,"\nLines Per Mode :");
+   for(int i=0;i<numModes[0].Length;++i)
+   {
+      fprintf(ptr,"%5d,",numModes[0][i]);
+   }
+   fprintf(ptr,"\n");
+
+   // compare network
+   fprintf(ptr,"\nCompare Network\n");
+   fprintf(ptr,  "---------------\n");
+   fprintf(ptr,"Network Name   : %-40s\n",compare->name);
+   fprintf(ptr,"Number of Lines: %6d\n",compare->getNumberOfLines());
+
+   fprintf(ptr,"Modes Present  :");
+   for(int i=0;i<modes[1].Length;++i)
+   {
+      fprintf(ptr,"%5d,",modes[1][i]);
+   }
+
+   fprintf(ptr,"\nLines Per Mode :");
+   for(int i=0;i<numModes[1].Length;++i)
+   {
+      fprintf(ptr,"%5d,",numModes[1][i]);
+   }
+   fprintf(ptr,"\n");
+
+
+
+   // compare transit lines
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"           Comparison of Transit Lines\n");
+   fprintf(ptr,"  ----------------------------------------------\n\n");
+
+   fprintf(ptr,"\n Transit Lines included in Base network but not in Compare network\n");
+   fprintf(ptr,  " -----------------------------------------------------------------\n\n");
+
+   bool clear;
+   bool allClear;
+   allClear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      // get unique Id
+      temp = this->Lines[i].getRoute();
+
+      clear = false;
+      for(int j=0;j<compare->getNumberOfLines();++j)
+      {
+         if(temp == compare->Lines[j].getRoute() )
+         {
+            clear = true;
+            break;
+         }
+      }
+
+      if (!clear)
+      {
+         allClear = false;
+
+         fprintf(ptr," Route # / Mode # : %8d / %8d\n",this->Lines[i].getRoute(),
+                                                   this->Lines[i].getMode() );
+
+      }
+   }
+
+   if(allClear) fprintf(ptr," No Transit Lines in Base Network not in Compare Network\n");
+
+
+   // check vice versa
+   fprintf(ptr,"\n\n Transit Lines included in Compare network but not in Base network\n");
+   fprintf(ptr,  " -----------------------------------------------------------------\n\n");
+
+   allClear = true;
+   for(int i=0;i<compare->getNumberOfLines();++i)
+   {
+      // get unique Id
+      temp = compare->Lines[i].getRoute();
+
+      clear = false;
+      for(int j=0;j<this->getNumberOfLines();++j)
+      {
+         if(temp == this->Lines[j].getRoute() )
+         {
+            clear = true;
+            break;
+         }
+      }
+
+      if (!clear)
+      {
+         allClear = false;
+
+         fprintf(ptr," Route # / Mode # : %8d / %8d\n",compare->Lines[i].getRoute(),
+                                                   compare->Lines[i].getMode() );
+
+      }
+   }
+
+   if(allClear) fprintf(ptr," No Transit Lines in Compare Network not in Base Network\n");
+
+
+   // compare itineraries
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"   Comparison of Transit Itineraries (for lines in both networks)\n");
+   fprintf(ptr,"-------------------------------------------------------------------\n\n");
+
+   int jPlace, bNode, cNode;
+   bool match;
+
+   allClear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      match = false;
+      for(int j=0;j<compare->getNumberOfLines();++j)
+      {
+         if(this->Lines[i].getRoute() == compare->Lines[j].getRoute() )
+         {
+            jPlace = j;
+            match = true;
+            break;
+         }
+      } // end j
+
+      if (match)
+      {
+         clear = true;
+         for(int k=0;k<this->Lines[i].getNumberOfNodes();++k)
+         {
+            bNode = this->Lines[i].getNode(k);
+            cNode = compare->Lines[jPlace].getNode(k);
+
+            if( (bNode != cNode) || bNode==-999999 || cNode==-999999 )
+            {
+               clear = false;
+               break;
+            }
+         } // end k
+
+         if (clear) this->Lines[i].setIdentical(true);
+
+      } // end if match
+
+      if(!clear)
+      {
+         allClear = false;
+         fprintf(ptr,"\n");
+         fprintf(ptr," Itinerary Mismatch for Line = %6d, Mode = %6d\n",
+                       this->Lines[i].getRoute(),this->Lines[i].getMode());
+         fprintf(ptr,"      Base Network Itinerary    = ");
+         this->Lines[i].printNodes(ptr);
+         fprintf(ptr,"\n");
+         fprintf(ptr,"      Compare Network Itinerary = ");
+         compare->Lines[jPlace].printNodes(ptr);
+         fprintf(ptr,"\n");
+      }
+
+   } // end i
+
+   if(allClear) fprintf(ptr," No Transit Itinerary Differences\n");
+
+   // compare headways
+   fprintf(ptr,"\n\n");
+   fprintf(ptr,"   Comparison of Transit Headways (for lines in both networks)\n");
+   fprintf(ptr,"-------------------------------------------------------------------\n\n");
+
+   int tempDiff1, tempDiff2, tempDiff3;
+
+   allClear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      match = false;
+      for(int j=0;j<compare->getNumberOfLines();++j)
+      {
+         if(this->Lines[i].getRoute() == compare->Lines[j].getRoute() )
+         {
+            jPlace = j;
+            match = true;
+            break;
+         }
+      } // end j
+
+      if (match)
+      {
+         tempDiff1 = 0;
+         tempDiff1 = this->Lines[i].getHeadway1() - compare->Lines[jPlace].getHeadway1();
+         if(tempDiff1<0) tempDiff1 = - tempDiff1;
+         
+         tempDiff2 = 0;
+         tempDiff2 = this->Lines[i].getHeadway2() - compare->Lines[jPlace].getHeadway2();
+         if(tempDiff2<0) tempDiff2 = - tempDiff2;
+         
+         tempDiff3 = 0;
+         tempDiff3 = this->Lines[i].getHeadway3() - compare->Lines[jPlace].getHeadway3();
+         if(tempDiff3<0) tempDiff3 = - tempDiff3;
+         
+         if(tempDiff1>0 || tempDiff2>0 || tempDiff3>0) clear = false;
+         else clear = true;
+                  
+      }
+     
+      if(!clear)
+      {
+         allClear = false;
+         fprintf(ptr,"\n");
+         fprintf(ptr," Headway Mismatch for Line = %6d, Mode = %6d\n",
+                       this->Lines[i].getRoute(),this->Lines[i].getMode());
+         fprintf(ptr,"      Base Network Headways    (1, 2, 3) = ");
+         this->Lines[i].printHeadways(ptr);
+         fprintf(ptr,"\n");
+         fprintf(ptr,"      Compare Network Headways (1, 2, 3) = ");
+         compare->Lines[jPlace].printHeadways(ptr);
+         fprintf(ptr,"\n");
+      }
+
+   } // end i
+
+   if(allClear) fprintf(ptr," No Transit Headway Differences\n");
+
+   // print out the lines which are identical
+
+   fprintf(ptr,"\n\n\n");
+   fprintf(ptr,"   Transit Lines in both networks with Identical Itineraries\n");
+   fprintf(ptr,"-------------------------------------------------------------------\n\n");
+
+   clear = true;
+   for(int i=0;i<this->getNumberOfLines();++i)
+   {
+      if(this->Lines[i].getIdentical())
+      {
+
+         clear = false;
+         fprintf(ptr," Route # / Mode # : %8d / %8d\n",this->Lines[i].getRoute(),
+                                                      this->Lines[i].getMode() );
+
+      }
+
+   } // end i
+
+   if(clear) fprintf(ptr," No Identical Transit Itineraries \n\n");
+
+
+
+}
+
+// dbf functions (jim hicks' code)
+int get_skips (DBHead db_header, int FieldNum)
+{
+    int i, Skip;
+
+	Skip = 0;
+	for (i=0; i < FieldNum; i++)
+		Skip += db_header->Fields[i].length;
+	return (Skip);
+}
+
+
+void get_dbase_double_data (double *data, DBHead db_header, int FieldNum, int SkipFirst)
+{
+    int i, k;
+	char TempString[1024];
+
+	for (i=0; i < db_header->NumRecords; i++) {
+		fseek (db_header->fp, db_header->HeaderLength + 1 + i*db_header->RecordLength + SkipFirst, SEEK_SET);
+		for (k=0; k < db_header->Fields[FieldNum].length; k++)
+			TempString[k] = fgetc(db_header->fp);
+		TempString[db_header->Fields[FieldNum].length] = '\0';
+		data[i] = (double)atof(TempString);
+	}
+}
+
+
+void get_dbase_int_data (int *data, DBHead db_header, int FieldNum, int SkipFirst)
+{
+    int i, k;
+	char TempString[1024];
+
+	for (i=0; i < db_header->NumRecords; i++) {
+		fseek (db_header->fp, db_header->HeaderLength + 1 + i*db_header->RecordLength + SkipFirst, SEEK_SET);
+		for (k=0; k < db_header->Fields[FieldNum].length; k++)
+			TempString[k] = fgetc(db_header->fp);
+		TempString[db_header->Fields[FieldNum].length] = '\0';
+		data[i] = (int)atoi(TempString);
+	}
+}
+
+
+void get_dbase_char_data (char **data, DBHead db_header, int FieldNum, int SkipFirst)
+{
+    int i, k;
+
+	for (i=0; i < db_header->NumRecords; i++) {
+		fseek (db_header->fp, db_header->HeaderLength + 1 + i*db_header->RecordLength + SkipFirst, SEEK_SET);
+		for (k=0; k < db_header->Fields[FieldNum].length; k++)
+			data[i][k] = fgetc(db_header->fp);
+		data[i][db_header->Fields[FieldNum].length] = '\0';
+	}
+}
+
+
+int get_dbase_field_number (DBHead db_header, char *FieldName)
+{
+    int i;
+
+	for (i=0; i < db_header->NumFields; i++)
+		if (!strcmp(db_header->Fields[i].name, FieldName))
+			return (i);
+
+	return (-1);
+}
+
+
+DBHead get_dbase_header_info (FILE *fp)
+{
+	int i=0, k=0;
+	char *Header, temp[32];
+	DBHead db_header = (DBHead) malloc (sizeof(struct Dbase_Info));
+
+	db_header->fp = fp;
+	db_header->HasMemo = fgetc(fp);
+	db_header->Year = fgetc(fp);
+	if (db_header->Year == 0)
+		db_header->Year = 2000;
+	db_header->Month = fgetc(fp);
+	db_header->Day = fgetc(fp);
+	fread (&db_header->NumRecords, sizeof(int), 1, fp);
+	fread (&db_header->HeaderLength, sizeof(short int), 1, fp);
+	fread (&db_header->RecordLength, sizeof(short int), 1, fp);
+	db_header->NumFields = (db_header->HeaderLength-33)/32;
+	db_header->Fields = (struct Dbase_Fields *) calloc (sizeof(struct Dbase_Fields), db_header->NumFields);
+
+	
+	Header = (char *) calloc (db_header->HeaderLength+1, 1);
+	rewind (fp);
+	fread (Header, db_header->HeaderLength, 1, fp);
+	Header[db_header->HeaderLength] = '\0';
+
+	
+	k = 32;
+	i = 0;
+	while (i < db_header->NumFields) {
+		strncpy (db_header->Fields[i].name, &Header[k], MAX_FIELD_NAME_LENGTH);
+		db_header->Fields[i].name[(int)strlen(&Header[k])] = '\0';
+		k += MAX_FIELD_NAME_LENGTH;
+		strncpy (db_header->Fields[i].type, &Header[k], MAX_FIELD_TYPE_LENGTH);
+		db_header->Fields[i].type[(int)strlen(&Header[k])] = '\0';
+		k += 5;
+		strncpy (temp, &Header[k], 1);
+		temp[1] = '\0';
+		db_header->Fields[i].length = *((short int *)temp);
+		k += 1;
+		strncpy (temp, &Header[k], 1);
+		temp[1] = '\0';
+		db_header->Fields[i].decimals = *((short int *)temp);
+		k += 15;
+		i++;
+	}
+
+	return (db_header);
+}    
+
+
+void print_dbase_header_info (FILE *fp, DBHead db_header) {
+	int i;
+	char *Months [] = { "", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+	fprintf (fp, "Has Memo = %d\n", db_header->HasMemo);
+	fprintf (fp, "Year     = %d\n", db_header->Year);
+	fprintf (fp, "Month    = %s\n", Months[db_header->Month]);
+	fprintf (fp, "Day      = %d\n", db_header->Day);
+	fprintf (fp, "Number of data fields  = %d\n", db_header->NumFields);
+	fprintf (fp, "Number of data records = %d\n", db_header->NumRecords);
+	fprintf (fp, "Length of header       = %hd\n", db_header->HeaderLength);
+	fprintf (fp, "Length of data record  = %hd\n\n", db_header->RecordLength);
+
+	fprintf (fp, "Field Names:\n");
+	for (i=0; i < db_header->NumFields; i++) {
+		if (i % 3 == 0)
+			fprintf (fp, "\n");
+		fprintf (fp, "%2d: %11s %2s  %2d.%-2d ", i, db_header->Fields[i].name,
+			db_header->Fields[i].type, db_header->Fields[i].length, db_header->Fields[i].decimals);
+	}
+	fprintf (fp, "\n");
+}
+
+
+
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+

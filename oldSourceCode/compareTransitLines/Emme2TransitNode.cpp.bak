@@ -1,0 +1,180 @@
+//---------------------------------------------------------------------------
+#pragma hdrstop
+
+#include "Emme2TransitNode.h"
+
+Emme2TransitNode::Emme2TransitNode(void)
+{
+   initialize();
+}
+
+void Emme2TransitNode::initialize(void)
+{
+
+
+}
+
+
+void Emme2TransitLine::printHeader(FILE *ptr, char *s)
+{
+   fprintf(ptr,"\n\n   Debug Routine Output -- Network: %-40s    \n\n",s);
+
+   fprintf(ptr,"              Line Name                          Mode (#)    Hdwy  AvgSpd     Nodes-->\n");
+   fprintf(ptr," -------------------------------------------- ----------- ------- -------");
+   fprintf(ptr,"     ------------------------------------------------------>\n");
+
+}
+
+void Emme2TransitLine::printRoute(FILE *ptr)
+{
+   fprintf(ptr,"  %-10s%-38s%-3s(%2d)%8.2f%8.2f",shortName,longName,mode,intMode,headway,avgSpeed);
+
+   if(nodes.Length>0)
+   {
+      fprintf(ptr," %8d",nodes[0]);
+
+      for(int i=1;i<nodes.Length;++i)
+      {
+         fprintf(ptr,",%8d",nodes[i]);
+      }
+
+      fprintf(ptr,"\n");
+   }
+   else
+   {
+      fprintf(ptr," No Nodes\n");
+   }
+
+   fflush(ptr);
+
+}
+
+int Emme2TransitLine::getNumberOfNodes(void)
+{
+   return(numberOfNodes);
+}
+
+int Emme2TransitLine::getIntMode(void)
+{
+   return(intMode);
+}
+
+bool Emme2TransitLine::getIdentical(void)
+{
+   return(identical);
+}
+
+float Emme2TransitLine::getHeadway(void)
+{
+   return(headway);
+}
+
+float Emme2TransitLine::getAvgSpeed(void)
+{
+   return(avgSpeed);
+}
+
+char* Emme2TransitLine::getMode(void)
+{
+   return(mode);
+}
+
+char* Emme2TransitLine::getShortName(void)
+{
+   return(shortName);
+}
+
+char* Emme2TransitLine::getLongName(void)
+{
+   return(longName);
+}
+
+void Emme2TransitLine::setMode(char* s)
+{
+   strcpy(mode,s);
+}
+
+void Emme2TransitLine::setHeadway(float h)
+{
+   headway = h;
+}
+void Emme2TransitLine::setAvgSpeed(float s)
+{
+   avgSpeed = s;
+}
+
+void Emme2TransitLine::setIdentical(bool b)
+{
+   identical = b;
+}
+
+void Emme2TransitLine::setIntMode(int i)
+{
+   intMode = i;
+}
+
+void Emme2TransitLine::setTypeOfMode(int i)
+{
+   typeOfMode = i;
+}
+
+void Emme2TransitLine::setShortName(char *s)
+{
+   strcpy(shortName,s);
+}
+
+void Emme2TransitLine::setLongName(char *s)
+{
+   strcpy(longName,s);
+}
+
+void Emme2TransitLine::addNode(int i)
+{
+   nodes.Length++;
+   nodes[nodes.Length-1] = i;
+   numberOfNodes++;
+}
+
+int Emme2TransitLine::getNode(int k)
+{
+   if(k>=nodes.Length)
+   {
+      cout<<"\n\nError in Emme2TransitLine::getNode --> Call to Node index ("<<k;
+      cout<<") greater than number of Nodes ("<<nodes.Length<<")\n";
+      cout<<"More Info: Occurred for Line Name="<<this->getShortName()<<this->getLongName();
+      cout<<", Mode="<<this->getMode();
+      cout<<"\n";
+      return(-999999);
+   }
+
+   return(nodes[k]);
+}
+
+void Emme2TransitLine::printNodes(FILE *ptr)
+{
+   for(int k=0;k<numberOfNodes;++k)
+   {
+      fprintf(ptr,"%8d,",nodes[k]);
+   }
+}
+
+void Emme2TransitLine::printHeadway(FILE *ptr)
+{
+   fprintf(ptr,"%8.2f",headway);
+}
+
+void Emme2TransitLine::printAvgSpeed(FILE *ptr)
+{
+   fprintf(ptr,"%8.2f",avgSpeed);
+}
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
