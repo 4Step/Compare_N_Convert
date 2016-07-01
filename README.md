@@ -1,8 +1,13 @@
+git issue: large files cannot be stored here and so the following three dlls are zipped (QT_dlls.zip)
+  - Qt5Cored.dll
+  - Qt5Guid.dll
+  - Qt5Widgetsd.dll
+
 # About:
     New Convert and Compare Program
-    Redefines old compare transit program 
+    Redefines old compare transit program
     Software(By: Amar Sarvepalli - under works 2013,in C++11)
-    
+
 ## Application Review:   
     - Software(written in 2007, in C++98)
     - Uses predefied fixed formats (such as text and DBF files)
@@ -18,19 +23,19 @@
     - Limitted to only two files (base<file1> and compare<file2>)
 
 ## Source Code:
-    - Missing complete source code (missing main class or readDBF format class) 
+    - Missing complete source code (missing main class or readDBF format class)
     - No common strucutre  : Each process (TRANPLAN, CUBE, TCAD and EMME) is a complete new class.
     - No read formats class: Uses predefined DFB library to read TCAD DBF files and is not part of main
-    - No extendable classes: Only one class -Route network, which is defined in four differnt ways (one for each formats,not mutable) 
+    - No extendable classes: Only one class -Route network, which is defined in four differnt ways (one for each formats,not mutable)
     - No datatable class   : No datatable class, data is read in only route class and process from there
     - No compare itinerary class : No such common class. Each format based route classes are compared in their repective main().
     - No string processing : No string split class, trim class or remove whitespace class
 
 ## Need for Upgrade:
     - Well, need to include newer formats such as (GTFS, which is in *.CSV file)
-    - Our work beyond NewStarts applications, where we need a simple file comparison method 
+    - Our work beyond NewStarts applications, where we need a simple file comparison method
       (without exporting to Excel readable formats and writing some compare formulas across fields)
-    - Comparison during the development phase: Whether it is the model estimation, or calibration or other taks, 
+    - Comparison during the development phase: Whether it is the model estimation, or calibration or other taks,
       there is no easy way to compare a few fields between files to get a sense of what's different
     - Scenario management: Need an easy tool to compare model inputs between two scenarios or same file across mutiple scenarios
 
@@ -47,7 +52,7 @@
         2) DIFFERENT set of files across two scenarios(ex: Scenario-A {<file1>, <file2>,....<fileN>}, Scenario-B {<file1>, <file2>,....<fileN>})
            Here,<file1> from Scenario-A is compared to <file1> from Scenario-B
     Cross Platfroms: Not that we need but by default, should work on WindowsXP, Windows7, Windows8, Mac and Fedora (open OS).
-    
+
 ## GUI Design: design broken down into five sections
     PART-0: Process
             Process_Type(radio buttons: 1.Compare Files, 2.Export tcad and other (*.bin), cube(*.dbf), cube(any except dbf), files to CSV)
@@ -55,14 +60,14 @@
             File_Type (General: Model tables, SEDATA tables and other simple txt or CSV or BIN files)
                       (Transit: compares route and stop attributes)     
                       (Highway: compares network attributes)                         
-            File_Formats (dropdown menu: DBF, CSV, TXT, TRANPLAN, TPPLUS, CUBE-TRNBUILD, CUBE-PT, TCAD, EMME2, EMME3 and GTFS) 
+            File_Formats (dropdown menu: DBF, CSV, TXT, TRANPLAN, TPPLUS, CUBE-TRNBUILD, CUBE-PT, TCAD, EMME2, EMME3 and GTFS)
     PART-B: ComparisonType
             Type_of_comparison(check box: 1) one file type across multiple scenarios, 2) several file types between two scenarios)
             Number_of_Files(dropdown menu: {1 - 10})
             More_than_10_Files(check box: this allows user to specify custom compare.CTL files, and disables SAVE)
     PART-C: FileSpecifications
             inFile_specification: Label<file1>   Box<displayBrowsedFileName>  Button<browse>
-                Label: shows file number 
+                Label: shows file number
                 Box  : Displays file name after selecting or by default shows "specify file1"
                 Button: Opens windows file browser to look for Extension based on PART-A choices
                 Extension chooser:
@@ -94,25 +99,25 @@
             RSET settings (button to clear out all current settings, back to default)
             COMPARE (button to run the compare data)
             CLOSE settings(button to close and exit the program, this also kills the program if something goes wrong)
-   
-## Outputs 
+
+## Outputs
 The number of outputs files directly correspond to Number_of_Files. However, the contents vary by PART-B > OPTIONS
   - PART-B > OPTION-1: This is a many-to-many comparison. For example, if user specifies 10 files, then it compares 90 datatables
                      output <file1> contains comparison of <file1> with all remaining files (file2...file10)
-                     output <file2> contains comparison of <file2> with all remaining files (file1,file3...file10) 
+                     output <file2> contains comparison of <file2> with all remaining files (file1,file3...file10)
   - PART-B > OPTION-2: This is a one-to-one comparison. For example, if user specifies 10 files in SET-A and 10 files in SET-B,
                      output <file1> contains comparison of SET-A<file1> to SET-B<file1>, only one table comparison
                      output <file2> contains comparison of SET-A<file1> to SET-B<file1>, only one table comparison
-                               
+
 
 ## Design Approach and Classes
 Converter: Converts different formats into CSV fileformat.
 Tables to use field structure (vector<fieldType>fields and array fields)
 
-     -  Level:0   CLASS: Converter (reads Compare.CTL and converts all specified files to *.csv files, 
+     -  Level:0   CLASS: Converter (reads Compare.CTL and converts all specified files to *.csv files,
                           routes are split into _Routes.csv and _Stops.csv)
-     -  Level:0   CLASS: Compare (reads Compare.CTL, CompareFieldInfo, creates either 
-                          1) builds TableData & CompareTableData & SummaryStats or 
+     -  Level:0   CLASS: Compare (reads Compare.CTL, CompareFieldInfo, creates either
+                          1) builds TableData & CompareTableData & SummaryStats or
                           2) builds BuildRouteTable & CompareRouteItinerary)
      -  Level:1   CLASS: ReadCTLFile (reads the control file and gets the user settings)
      -  Level:1   CLASS: CompareFieldInfo
@@ -121,11 +126,11 @@ Tables to use field structure (vector<fieldType>fields and array fields)
      -  Level:1   CLASS: ExportCUBEToCSV (simply exports cube trasnit line files to csv formats)
      -  Level:1   CLASS: OutputReport (writes output to the file,include methods, write.csv and write.txt)
      -  Level:1   CLASS: BuildTableData (array of fields with row elements, converts vector<dataType> array<dataType> and methods to get & set data to these fields)
-     -  Level:1   CLASS: BuildRouteTable (builds route table with ID,Name,mode,Headway1,Headway2,Headway3,Fare<optional>,Stops,Nodes,Delay(same number as stops) 
+     -  Level:1   CLASS: BuildRouteTable (builds route table with ID,Name,mode,Headway1,Headway2,Headway3,Fare<optional>,Stops,Nodes,Delay(same number as stops)
      -  Level:1   CLASS: CompareDataTables (creates a third table and reports differnces between the two tables)
      -  Level:2   CLASS: CompareRouteItinerary(specific to transit where node/stops info is appended to lines)
      -  Level:2   CLASS: CompareGeneralData (compares all common fields) between two or more files
-     -  Level:2   CLASS: SummaryStats(computes, column sums, min and maximum value and count(not null), returns the position of row with pmin and pmax) 
+     -  Level:2   CLASS: SummaryStats(computes, column sums, min and maximum value and count(not null), returns the position of row with pmin and pmax)
      -  Level:3   CLASS: ReadFormats (on transit side: identifies the file extension and looks for header files)
      -  Level:4   CLASS: ReadBINFile (reads binary files, relies on DCB file for header info and creates vector<dataType> for each field)
      -  Level:4   CLASS: Read_TCAD_Routes (reads transit lines and stops, tagged nodes)
@@ -152,4 +157,3 @@ Tables to use field structure (vector<fieldType>fields and array fields)
      -  Create CLASS: ReadDCBFile
      -  Create CLASS: ExportBINToCSV
      -  Create CLASS: ReadBINFile (info from ReadDCBFile, Reads Binary file contents)
-
